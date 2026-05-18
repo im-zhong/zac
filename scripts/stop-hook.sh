@@ -7,28 +7,38 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 SESSIONS_FILE="$PROJECT_DIR/.zac/sessions.json"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}"
-LOG_DIR="$PROJECT_DIR/.omc/logs"
-
+LOG_DIR="$PROJECT_DIR/.zac/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/stop-hook.log"
 
+log() { echo "$(date -Iseconds) $*" >> "$LOG_FILE"; }
+
+log "=== stop-hook.sh invoked ==="
+log "PROJECT_DIR=$PROJECT_DIR"
+log "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR:-<not set>}"
+
 # Read stdin JSON from Claude Code
 INPUT=$(cat)
+log "stdin input: $INPUT"
 
 # Extract fields
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
 HOOK_EVENT=$(echo "$INPUT" | jq -r '.hook_event_name // "Stop"')
 
+log "parsed: session_id=$SESSION_ID hook_event=$HOOK_EVENT"
+
 if [ -z "$SESSION_ID" ]; then
-  echo "$(date -Iseconds) ERROR: No session_id in hook input" >> "$LOG_FILE"
+  log "ERROR: No session_id in hook input"
   exit 0
 fi
 
 # Check state file exists
 if [ ! -f "$SESSIONS_FILE" ]; then
-  echo "$(date -Iseconds) No sessions.json found, skipping" >> "$LOG_FILE"
+  log "No sessions.json found at $SESSIONS_FILE, skipping"
   exit 0
 fi
+
+log "sessions.json content: $(cat "$SESSIONS_FILE")"
 
 # Find matching session by prefix (short_id is 8 hex chars, full session_id is UUID)
 SHORT_ID=$(jq -r --arg full "$SESSION_ID" '
@@ -36,9 +46,11 @@ SHORT_ID=$(jq -r --arg full "$SESSION_ID" '
 ' "$SESSIONS_FILE" | head -1)
 
 if [ -z "$SHORT_ID" ]; then
-  # Not a tracked session — ignore silently
+  log "No matching session found for session_id=$SESSION_ID, ignoring"
   exit 0
 fi
+
+log "matched session: short_id=$SHORT_ID"
 
 # Update full_session_id for debugging
 jq --arg short "$SHORT_ID" --arg full "$SESSION_ID" \
@@ -46,33 +58,25 @@ jq --arg short "$SHORT_ID" --arg full "$SESSION_ID" \
    "$SESSIONS_FILE" > "$SESSIONS_FILE.tmp" && mv "$SESSIONS_FILE.tmp" "$SESSIONS_FILE"
 
 TASK_TYPE=$(jq -r ".sessions[\"$SHORT_ID\"].task_type" "$SESSIONS_FILE")
-
-echo "$(date -Iseconds) $HOOK_EVENT: session=$SHORT_ID task=$TASK_TYPE" >> "$LOG_FILE"
+log "task_type=$TASK_TYPE"
 
 # Handle StopFailure → retry current phase
 if [ "$HOOK_EVENT" = "StopFailure" ]; then
   RETRY_COUNT=$(jq -r ".sessions[\"$SHORT_ID\"].retry_count" "$SESSIONS_FILE")
+  log "StopFailure: retry_count=$RETRY_COUNT"
   if [ "$RETRY_COUNT" -lt 3 ]; then
-    echo "$(date -Iseconds) Retrying $TASK_TYPE (attempt $((RETRY_COUNT + 1))/3)" >> "$LOG_FILE"
+    log "Retrying $TASK_TYPE (attempt $((RETRY_COUNT + 1))/3)"
     "$PLUGIN_ROOT/scripts/start-dev.sh" --phase "$TASK_TYPE" --retry
   else
-    echo "$(date -Iseconds) FAILED: $TASK_TYPE exceeded 3 retries, stopping workflow" >> "$LOG_FILE"
+    log "FAILED: $TASK_TYPE exceeded 3 retries, stopping workflow"
   fi
-  exit 0
-fi
-
-# Check if the phase marked itself as completed before stopping
-# A phase that was blocked (permissions, AskUserQuestion) won't set this flag
-PHASE_COMPLETED=$(jq -r ".sessions[\"$SHORT_ID\"].completed // false" "$SESSIONS_FILE")
-if [ "$PHASE_COMPLETED" != "true" ]; then
-  echo "$(date -Iseconds) Phase $TASK_TYPE stopped without completing — not transitioning. Re-launching." >> "$LOG_FILE"
-  "$PLUGIN_ROOT/scripts/start-dev.sh" --phase "$TASK_TYPE" --retry
   exit 0
 fi
 
 # Helper: query current F-N from docs
 query_next_fn() {
-  claude --permission-mode bypassPermissions -p "$(cat <<'PROMPT'
+  log "query_next_fn: asking claude to find next F-N"
+  DECISION=$(claude --permission-mode bypassPermissions -p "$(cat <<'PROMPT'
 你是工作流调度器。读取以下文件判断开发状态：
 
 1. docs/superpowers/state.md — 当前迭代信息
@@ -85,43 +89,33 @@ query_next_fn() {
 
 只输出一行，格式严格为 CONTINUE: <名称> 或 SUMMARIZE
 PROMPT
-)"
+)")
+  log "query_next_fn result: $DECISION"
+  echo "$DECISION"
 }
 
-# Normal Stop (phase completed) → state machine transition
+# Normal Stop → state machine transition
 case "$TASK_TYPE" in
-  scaffold)
-    DECISION=$(query_next_fn)
-    if echo "$DECISION" | grep -q "^CONTINUE: "; then
-      FN_NAME=$(echo "$DECISION" | sed 's/^CONTINUE: //')
-      echo "$(date -Iseconds) Transition: scaffold → autopilot (F-N: $FN_NAME)" >> "$LOG_FILE"
-      "$PLUGIN_ROOT/scripts/start-dev.sh" --phase autopilot --target "$FN_NAME"
-    else
-      echo "$(date -Iseconds) Transition: scaffold → summarize (no F-Ns to implement)" >> "$LOG_FILE"
-      "$PLUGIN_ROOT/scripts/start-dev.sh" --phase summarize
-    fi
-    ;;
   autopilot)
     FN_NAME=$(jq -r ".sessions[\"$SHORT_ID\"].target // \"\"" "$SESSIONS_FILE")
-    echo "$(date -Iseconds) Transition: autopilot → run (F-N: $FN_NAME)" >> "$LOG_FILE"
+    log "Transition: autopilot → run (F-N: $FN_NAME)"
     "$PLUGIN_ROOT/scripts/start-dev.sh" --phase run --target "$FN_NAME"
     ;;
   run)
-    # Decision point: check if more F-Ns remain
     DECISION=$(query_next_fn)
     if echo "$DECISION" | grep -q "^SUMMARIZE"; then
-      echo "$(date -Iseconds) Transition: run → summarize (no more F-Ns)" >> "$LOG_FILE"
+      log "Transition: run → summarize (no more F-Ns)"
       "$PLUGIN_ROOT/scripts/start-dev.sh" --phase summarize
     else
       FN_NAME=$(echo "$DECISION" | sed 's/^CONTINUE: //')
-      echo "$(date -Iseconds) Transition: run → autopilot (next F-N: $FN_NAME)" >> "$LOG_FILE"
+      log "Transition: run → autopilot (next F-N: $FN_NAME)"
       "$PLUGIN_ROOT/scripts/start-dev.sh" --phase autopilot --target "$FN_NAME"
     fi
     ;;
   summarize)
-    echo "$(date -Iseconds) Workflow complete" >> "$LOG_FILE"
+    log "Workflow complete"
     ;;
   *)
-    echo "$(date -Iseconds) Unknown task type: $TASK_TYPE" >> "$LOG_FILE"
+    log "Unknown task type: $TASK_TYPE"
     ;;
 esac
