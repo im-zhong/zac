@@ -21,7 +21,9 @@ from pathlib import Path
 
 def log(msg: str) -> None:
     """Append timestamped message to .zac/logs/start-dev.log."""
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if not project_dir:
+        return
     log_dir = Path(project_dir) / ".zac" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().astimezone().isoformat()
@@ -130,7 +132,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """Entry point: parse args → build prompt → launch session → record state."""
     log("=== start-dev.py invoked ===")
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if not project_dir:
+        print("start-dev.py: CLAUDE_PROJECT_DIR not set, not running under Claude Code hooks", file=sys.stderr)
+        return
     log(f"PROJECT_DIR={project_dir}")
 
     args = parse_args()

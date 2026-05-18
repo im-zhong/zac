@@ -22,7 +22,9 @@ SESSIONS_KEY = "sessions"
 
 def log(msg: str) -> None:
     """Append timestamped message to .zac/logs/stop-hook.log."""
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if not project_dir:
+        return
     log_dir = Path(project_dir) / ".zac" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().astimezone().isoformat()
@@ -160,7 +162,10 @@ def main() -> None:
     Flow: parse stdin → find session → guard re-entrancy → handle event.
     """
     log("=== stop-hook.py invoked ===")
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if not project_dir:
+        print("stop-hook.py: CLAUDE_PROJECT_DIR not set, not running under Claude Code hooks", file=sys.stderr)
+        return
     log(f"PROJECT_DIR={project_dir}")
 
     # Parse hook input from Claude Code (JSON on stdin)
