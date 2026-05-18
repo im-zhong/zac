@@ -7,6 +7,8 @@ Usage:
 Environment variables:
   CLAUDE_PROJECT_DIR  — user's project directory (e.g. /home/zhangzhong/src/zac).
                         .zac/logs/, .zac/sessions.json live here.
+                        Falls back to os.getcwd() when called from skills
+                        (only hooks guarantee this variable is set).
 """
 
 import argparse
@@ -21,9 +23,12 @@ from pathlib import Path
 
 def log(msg: str) -> None:
     """Append timestamped message to .zac/logs/start-dev.log."""
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
-    if not project_dir:
-        return
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    log_dir = Path(project_dir) / ".zac" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().astimezone().isoformat()
+    with open(log_dir / "start-dev.log", "a") as f:
+        f.write(f"{ts} {msg}\n")
     log_dir = Path(project_dir) / ".zac" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().astimezone().isoformat()
@@ -132,10 +137,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """Entry point: parse args → build prompt → launch session → record state."""
     log("=== start-dev.py invoked ===")
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
-    if not project_dir:
-        print("start-dev.py: CLAUDE_PROJECT_DIR not set, not running under Claude Code hooks", file=sys.stderr)
-        return
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     log(f"PROJECT_DIR={project_dir}")
 
     args = parse_args()
