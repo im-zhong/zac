@@ -32,11 +32,29 @@ Each phase runs as an isolated `claude --bg` session. When a session ends, the S
 
 ## Installation
 
-```bash
-# Install the plugin
-claude plugin add https://github.com/im-zhong/zac
+### Option 1: Install from marketplace (recommended)
 
-# Install LSP servers (recommended)
+Add the marketplace first, then install the plugin:
+
+```bash
+# Add the marketplace
+claude plugin marketplace add im-zhong/zac
+
+# Install the plugin from marketplace
+claude plugin install zac@zhongs-plugin-marketplace
+```
+
+### Option 2: Install from official marketplace
+
+```bash
+# Install from the official Claude Code marketplace
+claude plugin install zac
+```
+
+### Post-install (recommended)
+
+```bash
+# Install LSP servers
 npm install -g typescript-language-server typescript
 npm install -g pyright
 ```
