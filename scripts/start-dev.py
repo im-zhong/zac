@@ -74,9 +74,9 @@ def build_prompt(phase: str, target: str) -> str:
     """Build the prompt sent to the background claude session."""
     if phase == "autopilot":
         if target:
-            prompt = f"/feature-dev {target}"
+            prompt = f"/feature-dev:feature-dev {target}"
         else:
-            prompt = "/feature-dev 读取 docs/superpowers/state.md 和 docs/superpowers/items/*.md，找到第一个状态为待开始的功能点并实现它"
+            prompt = "/feature-dev:feature-dev 读取 docs/superpowers/state.md 和 docs/superpowers/items/*.md，找到第一个状态为待开始的功能点并实现它"
 
         prompt += """
 
