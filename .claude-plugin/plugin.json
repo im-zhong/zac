@@ -17,16 +17,16 @@
     "iterative development"
   ],
   "dependencies": [
-    { "name": "frontend-design" },
-    { "name": "superpowers" },
-    { "name": "context7" },
-    { "name": "code-review" },
-    { "name": "code-simplifier" },
-    { "name": "playwright" },
-    { "name": "feature-dev" },
-    { "name": "ralph-loop" },
-    { "name": "typescript-lsp" },
-    { "name": "commit-commands" },
-    { "name": "pyright-lsp" }
+    { "name": "frontend-design", "marketplace": "claude-plugins-official" },
+    { "name": "superpowers", "marketplace": "claude-plugins-official" },
+    { "name": "context7", "marketplace": "claude-plugins-official" },
+    { "name": "code-review", "marketplace": "claude-plugins-official" },
+    { "name": "code-simplifier", "marketplace": "claude-plugins-official" },
+    { "name": "playwright", "marketplace": "claude-plugins-official" },
+    { "name": "feature-dev", "marketplace": "claude-plugins-official" },
+    { "name": "ralph-loop", "marketplace": "claude-plugins-official" },
+    { "name": "typescript-lsp", "marketplace": "claude-plugins-official" },
+    { "name": "commit-commands", "marketplace": "claude-plugins-official" },
+    { "name": "pyright-lsp", "marketplace": "claude-plugins-official" }
   ]
 }

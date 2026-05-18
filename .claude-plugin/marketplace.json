@@ -6,6 +6,7 @@
     "name": "im-zhong",
     "email": "im.zhong@outlook.com"
   },
+  "allowCrossMarketplaceDependenciesOn": ["claude-plugins-official"],
   "plugins": [
     {
       "name": "zac",
