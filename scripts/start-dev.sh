@@ -55,7 +55,11 @@ fi
 
 # Build the prompt: skill name + target + background mode instructions
 PROMPT="/$PHASE"
-[ -n "$TARGET" ] && PROMPT="$PROMPT $TARGET"
+if [ -n "$TARGET" ]; then
+  PROMPT="$PROMPT 实现 $TARGET"
+else
+  PROMPT="$PROMPT 读取 docs/superpowers/state.md 和 docs/superpowers/items/*.md，找到第一个状态为待开始的功能点并实现它"
+fi
 PROMPT="$PROMPT
 
 你在后台模式运行。禁止使用 AskUserQuestion 工具。所有需要用户确认的决策，采用推荐默认值并继续执行。"
