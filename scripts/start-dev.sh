@@ -46,14 +46,13 @@ log "parsed: phase=$PHASE target=${TARGET:-<none>} retry=$RETRY"
 
 # Ensure state file exists with valid JSON
 mkdir -p "$(dirname "$SESSIONS_FILE")"
-if [ ! -f "$SESSIONS_FILE" ] || [ ! -s "$SESSIONS_FILE" ]; then
-  printf '%s\n' '{"workflow":{"current_phase":"","started_at":""},"sessions":{}}' > "$SESSIONS_FILE"
-  log "created sessions.json"
-fi
-# Verify sessions.json is valid JSON
-if ! jq empty "$SESSIONS_FILE" 2>/dev/null; then
-  log "sessions.json is invalid, resetting"
-  printf '%s\n' '{"workflow":{"current_phase":"","started_at":""},"sessions":{}}' > "$SESSIONS_FILE"
+INIT_JSON='{"workflow":{"current_phase":"","started_at":""},"sessions":{}}'
+if [ ! -f "$SESSIONS_FILE" ] || [ ! -s "$SESSIONS_FILE" ] || ! jq empty "$SESSIONS_FILE" 2>/dev/null; then
+  TMP=$(mktemp /tmp/zac-session.XXXXXX.json)
+  printf '%s\n' "$INIT_JSON" > "$TMP"
+  cp "$TMP" "$SESSIONS_FILE"
+  rm -f "$TMP"
+  log "created/reset sessions.json"
 fi
 log "sessions.json content: $(cat "$SESSIONS_FILE")"
 
