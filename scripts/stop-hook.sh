@@ -56,7 +56,7 @@ log "matched session: short_id=$SHORT_ID"
 RESULT=$(jq --arg short "$SHORT_ID" --arg full "$SESSION_ID" \
    '.sessions[$short].full_session_id = $full' \
    "$SESSIONS_FILE")
-echo "$RESULT" > "$SESSIONS_FILE"
+printf '%s\n' "$RESULT" > "$SESSIONS_FILE"
 
 TASK_TYPE=$(jq -r ".sessions[\"$SHORT_ID\"].task_type" "$SESSIONS_FILE")
 log "task_type=$TASK_TYPE"

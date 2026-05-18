@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # start-dev.sh — Launch a dev-flow phase as a background claude session
-# Usage: start-dev.sh [--phase scaffold|autopilot|run|summarize] [--target <F-N name>] [--retry]
+# Usage: start-dev.sh [--phase autopilot|run|summarize] [--target <F-N name>] [--retry]
 
 set -euo pipefail
 
@@ -44,14 +44,18 @@ esac
 
 log "parsed: phase=$PHASE target=${TARGET:-<none>} retry=$RETRY"
 
-# Ensure state file exists
+# Ensure state file exists with valid JSON
 mkdir -p "$(dirname "$SESSIONS_FILE")"
-if [ ! -f "$SESSIONS_FILE" ]; then
-  echo '{"workflow":{"current_phase":"","started_at":""},"sessions":{}}' > "$SESSIONS_FILE"
-  log "created sessions.json at $SESSIONS_FILE"
-else
-  log "sessions.json already exists at $SESSIONS_FILE"
+if [ ! -f "$SESSIONS_FILE" ] || [ ! -s "$SESSIONS_FILE" ]; then
+  printf '%s\n' '{"workflow":{"current_phase":"","started_at":""},"sessions":{}}' > "$SESSIONS_FILE"
+  log "created sessions.json"
 fi
+# Verify sessions.json is valid JSON
+if ! jq empty "$SESSIONS_FILE" 2>/dev/null; then
+  log "sessions.json is invalid, resetting"
+  printf '%s\n' '{"workflow":{"current_phase":"","started_at":""},"sessions":{}}' > "$SESSIONS_FILE"
+fi
+log "sessions.json content: $(cat "$SESSIONS_FILE")"
 
 # Build the prompt: skill name + target + background mode instructions
 PROMPT="/$PHASE"
@@ -87,7 +91,7 @@ fi
 log "captured session short_id: $SHORT_ID"
 
 # Write current session id for reference
-echo "$SHORT_ID" > "$PROJECT_DIR/.zac/current-session"
+printf '%s' "$SHORT_ID" > "$PROJECT_DIR/.zac/current-session"
 
 # Calculate retry count
 NOW=$(date -Iseconds)
@@ -99,7 +103,7 @@ else
   RETRY_COUNT=0
 fi
 
-# Record to sessions.json (use variable to avoid stdout being captured by hook framework)
+# Record to sessions.json
 RESULT=$(jq --arg short "$SHORT_ID" \
    --arg phase "$PHASE" \
    --arg now "$NOW" \
@@ -115,8 +119,11 @@ RESULT=$(jq --arg short "$SHORT_ID" \
       full_session_id: ""
     }' \
    "$SESSIONS_FILE")
-echo "$RESULT" > "$SESSIONS_FILE"
+log "jq result: $RESULT"
+TMP=$(mktemp /tmp/zac-session.XXXXXX.json)
+printf '%s\n' "$RESULT" > "$TMP"
+cp "$TMP" "$SESSIONS_FILE"
+rm -f "$TMP"
+log "sessions.json after write: $(cat "$SESSIONS_FILE")"
 
-log "sessions.json updated: short_id=$SHORT_ID phase=$PHASE target=${TARGET:-<none>} retry=$RETRY_COUNT"
-log "sessions.json content: $RESULT"
 echo "Started $PHASE session: $SHORT_ID (retry: $RETRY_COUNT)"
