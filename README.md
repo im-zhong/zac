@@ -59,6 +59,14 @@ npm install -g typescript-language-server typescript
 npm install -g pyright
 ```
 
+## Update
+
+```bash
+claude plugin marketplace update zhongs-plugin-marketplace
+claude plugin uninstall zac@zhongs-plugin-marketplace
+claude plugin install zac@zhongs-plugin-marketplace
+```
+
 ## Usage
 
 ### Start a dev flow

@@ -95,8 +95,8 @@ else
   RETRY_COUNT=0
 fi
 
-# Record to sessions.json (atomic write via tmp file)
-jq --arg short "$SHORT_ID" \
+# Record to sessions.json (use variable to avoid stdout being captured by hook framework)
+RESULT=$(jq --arg short "$SHORT_ID" \
    --arg phase "$PHASE" \
    --arg now "$NOW" \
    --argjson retry "$RETRY_COUNT" \
@@ -110,7 +110,9 @@ jq --arg short "$SHORT_ID" \
       target: $target,
       full_session_id: ""
     }' \
-   "$SESSIONS_FILE" > "$SESSIONS_FILE.tmp" && mv "$SESSIONS_FILE.tmp" "$SESSIONS_FILE"
+   "$SESSIONS_FILE")
+echo "$RESULT" > "$SESSIONS_FILE"
 
 log "sessions.json updated: short_id=$SHORT_ID phase=$PHASE target=${TARGET:-<none>} retry=$RETRY_COUNT"
+log "sessions.json content: $RESULT"
 echo "Started $PHASE session: $SHORT_ID (retry: $RETRY_COUNT)"
