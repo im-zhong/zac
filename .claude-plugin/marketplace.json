@@ -1,0 +1,25 @@
+{
+  "name": "zhongs-plugin-marketplace",
+  "version": "0.0.1",
+  "description": "Official Zhong's plugin marketplace — Human-In-The-Loop iterative development with progressive disclosure and deterministic workflow orchestration for Claude Code.",
+  "owner": {
+    "name": "im-zhong",
+    "email": "im.zhong@outlook.com"
+  },
+  "plugins": [
+    {
+      "name": "zac",
+      "description": "A Claude Code plugin for Human-In-The-Loop iterative development with progressive disclosure and deterministic workflow orchestration.",
+      "source": "./",
+      "homepage": "https://github.com/im-zhong/zac",
+      "version": "0.0.1",
+      "license": "MIT",
+      "keywords": [
+        "agentic coding",
+        "context management",
+        "progressive disclosure",
+        "iterative development"
+      ]
+    }
+  ]
+}
