@@ -73,7 +73,7 @@ case "$TASK_TYPE" in
     ;;
   run)
     # Decision point: check if more F-Ns remain
-    DECISION=$(claude -p "$(cat <<'PROMPT'
+    DECISION=$(claude --dangerously-skip-permissions -p "$(cat <<'PROMPT'
 你是工作流调度器。读取以下文件判断开发状态：
 
 1. docs/superpowers/state.md — 当前迭代信息
