@@ -61,40 +61,61 @@ if [ "$HOOK_EVENT" = "StopFailure" ]; then
   exit 0
 fi
 
-# Normal Stop → state machine transition
-case "$TASK_TYPE" in
-  scaffold)
-    echo "$(date -Iseconds) Transition: scaffold → autopilot" >> "$LOG_FILE"
-    "$PLUGIN_ROOT/scripts/start-dev.sh" --phase autopilot
-    ;;
-  autopilot)
-    echo "$(date -Iseconds) Transition: autopilot → run" >> "$LOG_FILE"
-    "$PLUGIN_ROOT/scripts/start-dev.sh" --phase run
-    ;;
-  run)
-    # Decision point: check if more F-Ns remain
-    DECISION=$(claude --dangerously-skip-permissions -p "$(cat <<'PROMPT'
+# Check if the phase marked itself as completed before stopping
+# A phase that was blocked (permissions, AskUserQuestion) won't set this flag
+PHASE_COMPLETED=$(jq -r ".sessions[\"$SHORT_ID\"].completed // false" "$SESSIONS_FILE")
+if [ "$PHASE_COMPLETED" != "true" ]; then
+  echo "$(date -Iseconds) Phase $TASK_TYPE stopped without completing — not transitioning. Re-launching." >> "$LOG_FILE"
+  "$PLUGIN_ROOT/scripts/start-dev.sh" --phase "$TASK_TYPE" --retry
+  exit 0
+fi
+
+# Helper: query current F-N from docs
+query_next_fn() {
+  claude --permission-mode bypassPermissions -p "$(cat <<'PROMPT'
 你是工作流调度器。读取以下文件判断开发状态：
 
 1. docs/superpowers/state.md — 当前迭代信息
-2. docs/superpowers/plans/*.md — 功能树和进度
-3. docs/superpowers/items/*.md — 各功能点详细状态
+2. docs/superpowers/items/*.md — 各功能点详细状态
 
-判断规则（和 dev-loop Step 2 一致）：
+判断规则：
 - 扫描 items 文档，找第一个 **状态:** 待开始 的功能点
 - 如果找到 → 输出 CONTINUE: <功能点名称>
 - 如果没有待开始的功能点 → 输出 SUMMARIZE
 
 只输出一行，格式严格为 CONTINUE: <名称> 或 SUMMARIZE
 PROMPT
-)")
+)"
+}
+
+# Normal Stop (phase completed) → state machine transition
+case "$TASK_TYPE" in
+  scaffold)
+    DECISION=$(query_next_fn)
+    if echo "$DECISION" | grep -q "^CONTINUE: "; then
+      FN_NAME=$(echo "$DECISION" | sed 's/^CONTINUE: //')
+      echo "$(date -Iseconds) Transition: scaffold → autopilot (F-N: $FN_NAME)" >> "$LOG_FILE"
+      "$PLUGIN_ROOT/scripts/start-dev.sh" --phase autopilot --target "$FN_NAME"
+    else
+      echo "$(date -Iseconds) Transition: scaffold → summarize (no F-Ns to implement)" >> "$LOG_FILE"
+      "$PLUGIN_ROOT/scripts/start-dev.sh" --phase summarize
+    fi
+    ;;
+  autopilot)
+    FN_NAME=$(jq -r ".sessions[\"$SHORT_ID\"].target // \"\"" "$SESSIONS_FILE")
+    echo "$(date -Iseconds) Transition: autopilot → run (F-N: $FN_NAME)" >> "$LOG_FILE"
+    "$PLUGIN_ROOT/scripts/start-dev.sh" --phase run --target "$FN_NAME"
+    ;;
+  run)
+    # Decision point: check if more F-Ns remain
+    DECISION=$(query_next_fn)
     if echo "$DECISION" | grep -q "^SUMMARIZE"; then
       echo "$(date -Iseconds) Transition: run → summarize (no more F-Ns)" >> "$LOG_FILE"
       "$PLUGIN_ROOT/scripts/start-dev.sh" --phase summarize
     else
       FN_NAME=$(echo "$DECISION" | sed 's/^CONTINUE: //')
       echo "$(date -Iseconds) Transition: run → autopilot (next F-N: $FN_NAME)" >> "$LOG_FILE"
-      "$PLUGIN_ROOT/scripts/start-dev.sh" --phase autopilot
+      "$PLUGIN_ROOT/scripts/start-dev.sh" --phase autopilot --target "$FN_NAME"
     fi
     ;;
   summarize)

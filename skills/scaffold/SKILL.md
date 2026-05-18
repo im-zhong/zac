@@ -338,6 +338,14 @@ Tier: <X> (<label>)
   - 权限不足 → 记录精确的手动修复命令，不使用 sudo
 </Escalation>
 
+<Background_Mode>
+  当环境变量 `ZAC_BG=1` 时，scaffold 运行在后台模式下：
+  - Phase 4 Tier 判定：自动选择推荐 Tier，不使用 AskUserQuestion
+  - Phase 5 Plan 批准：自动批准，不使用 AskUserQuestion
+  - Phase 6 不确定项：采用默认选择，记录到日志，不使用 AskUserQuestion
+  - 完成后：执行 `jq '.sessions[<current_short_id>].completed = true' $PROJECT_DIR/.zac/sessions.json` 标记完成
+</Background_Mode>
+
 <Final_Checklist>
   - [ ] state.md 加载成功，文档路径已提取
   - [ ] 全部 pre-dev 文档（spec/roadmap/toolchain/summarize）已加载
@@ -350,4 +358,5 @@ Tier: <X> (<label>)
   - [ ] 开发服务器验证通过（Phase 8）
   - [ ] 测试框架验证通过（Phase 8）
   - [ ] 报告已展示（Phase 9）
+  - [ ] 如为后台模式（ZAC_BG=1），已标记 sessions.json completed=true
 </Final_Checklist>

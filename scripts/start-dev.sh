@@ -9,11 +9,14 @@ SESSIONS_FILE="$PROJECT_DIR/.zac/sessions.json"
 
 # Parse arguments
 PHASE=""
+TARGET=""
 RETRY=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --phase=*) PHASE="${1#--phase=}" ;;
     --phase)   PHASE="$2"; shift ;;
+    --target=*) TARGET="${1#--target=}" ;;
+    --target)   TARGET="$2"; shift ;;
     --retry)   RETRY=true ;;
     *)         echo "Unknown argument: $1"; exit 1 ;;
   esac
@@ -36,10 +39,14 @@ if [ ! -f "$SESSIONS_FILE" ]; then
 fi
 
 # Build the skill prompt
-PROMPT="/$PHASE"
+if [ -n "$TARGET" ]; then
+  PROMPT="/$PHASE $TARGET"
+else
+  PROMPT="/$PHASE"
+fi
 
-# Launch background session
-OUTPUT=$(claude --dangerously-skip-permissions --bg "$PROMPT" 2>&1)
+# Launch background session with ZAC_BG=1 to skip interactive prompts
+OUTPUT=$(ZAC_BG=1 ZAC_PROJECT_DIR="$PROJECT_DIR" claude --permission-mode bypassPermissions --bg "$PROMPT" 2>&1)
 SHORT_ID=$(echo "$OUTPUT" | grep -oP '[a-f0-9]{8}' | head -1)
 
 if [ -z "$SHORT_ID" ]; then
@@ -63,12 +70,14 @@ jq --arg short "$SHORT_ID" \
    --arg phase "$PHASE" \
    --arg now "$NOW" \
    --argjson retry "$RETRY_COUNT" \
+   --arg target "$TARGET" \
    '.workflow.current_phase = $phase |
     .workflow.started_at = $now |
     .sessions[$short] = {
       task_type: $phase,
       started_at: $now,
       retry_count: $retry,
+      target: $target,
       full_session_id: ""
     }' \
    "$SESSIONS_FILE" > "$SESSIONS_FILE.tmp" && mv "$SESSIONS_FILE.tmp" "$SESSIONS_FILE"
