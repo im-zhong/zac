@@ -1,0 +1,32 @@
+{
+  "name": "zac",
+  "version": "0.0.1",
+  "description": "A Claude Code plugin for Human-In-The-Loop iterative development with progressive disclosure and deterministic workflow orchestration.",
+  "author": {
+    "name": "im-zhong",
+    "email": "im.zhong@outlook.com",
+    "url": "https://github.com/im-zhong"
+  },
+  "homepage": "https://github.com/im-zhong/zac",
+  "repository": "https://github.com/im-zhong/zac",
+  "license": "MIT",
+  "keywords": [
+    "agentic coding",
+    "context management",
+    "progressive disclosure",
+    "iterative development"
+  ],
+  "dependencies": [
+    { "name": "frontend-design" },
+    { "name": "superpowers" },
+    { "name": "context7" },
+    { "name": "code-review" },
+    { "name": "code-simplifier" },
+    { "name": "playwright" },
+    { "name": "feature-dev" },
+    { "name": "ralph-loop" },
+    { "name": "typescript-lsp" },
+    { "name": "commit-commands" },
+    { "name": "pyright-lsp" }
+  ]
+}
