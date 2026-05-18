@@ -74,9 +74,9 @@ def build_prompt(phase: str, target: str) -> str:
     """Build the prompt sent to the background claude session."""
     prompt = f"/{phase}"
     if target:
-        prompt += f" 实现 {target}"
+        prompt += f" 只实现 {target}，不要开始任何其他功能点。完成 {target} 后立即停止，即使还有其他待开始的功能点也不要继续。"
     else:
-        prompt += " 读取 docs/superpowers/state.md 和 docs/superpowers/items/*.md，找到第一个状态为待开始的功能点并实现它"
+        prompt += " 读取 docs/superpowers/state.md 和 docs/superpowers/items/*.md，找到第一个状态为待开始的功能点。只实现这一个功能点，完成后立即停止，不要开始任何其他功能点。"
 
     prompt += """
 
