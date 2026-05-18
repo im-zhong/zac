@@ -73,25 +73,29 @@ def extract_session_id(output: str) -> str | None:
 def build_prompt(phase: str, target: str) -> str:
     """Build the prompt sent to the background claude session."""
     if phase == "autopilot":
-        # Use feature-dev for structured, single-F-N implementation
         if target:
             prompt = f"/feature-dev {target}"
         else:
             prompt = "/feature-dev 读取 docs/superpowers/state.md 和 docs/superpowers/items/*.md，找到第一个状态为待开始的功能点并实现它"
-    elif phase == "run":
-        prompt = f"/{phase}"
-        if target:
-            prompt += f" 测试 {target}"
-    else:
-        prompt = f"/{phase}"
 
-    prompt += """
+        prompt += """
 
 你在后台模式运行，必须遵守以下规则：
 1. 禁止使用 AskUserQuestion 工具
 2. feature-dev 的所有交互环节（澄清问题、架构选择、质量审查）直接采用推荐默认值并继续执行，不要等待用户回复
-3. 只实现指定的这一个功能点，完成后立即停止，不要开始任何其他功能点
-4. 任务完成后，将当前 worktree 的改动合并回 main 分支并删除 worktree：
+3. 只实现指定的这一个功能点，完成后立即停止，不要开始任何其他功能点"""
+    else:
+        prompt = f"/{phase}"
+        if target:
+            prompt += f" {target}"
+
+    # All phases share these constraints
+    prompt += """
+
+你在后台模式运行，必须遵守以下规则：
+1. 禁止使用 AskUserQuestion 工具
+2. 所有需要用户确认的决策，采用推荐默认值并继续执行
+3. 任务完成后，将当前 worktree 的改动合并回 main 分支并删除 worktree：
    - git add 并 commit 所有改动
    - git checkout main && git merge <当前分支>
    - 退出 worktree 并删除它"""
