@@ -62,7 +62,11 @@ else
 fi
 PROMPT="$PROMPT
 
-你在后台模式运行。禁止使用 AskUserQuestion 工具。所有需要用户确认的决策，采用推荐默认值并继续执行。"
+你在后台模式运行。禁止使用 AskUserQuestion 工具。所有需要用户确认的决策，采用推荐默认值并继续执行。
+任务完成后，将当前 worktree 的改动合并回 main 分支并删除 worktree：
+1. git add 并 commit 所有改动
+2. git checkout main && git merge <当前分支>
+3. 退出 worktree 并删除它"
 
 log "prompt: $PROMPT"
 
